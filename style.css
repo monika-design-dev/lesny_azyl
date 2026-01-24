@@ -83,7 +83,7 @@ nav{position: fixed;top: 0;left: 0;width: 100%;z-index: 10;padding: 0;margin-top
 background: rgba(42, 54, 43, 0.4);
 backdrop-filter: blur(5px);
 width: 100%;
-padding: 40px 10px 10px 10px;
+padding: 10px;
 border-radius: 5px;
 display: flex;
 flex-direction: column;
@@ -174,13 +174,7 @@ transition: border-color 0.3s, background-color 0.3s;
 nav ul li:not(:last-child) a {
 margin-right: 5px;
 }
-nav ul li a:not(.icon-button)::before{
-content: "🌿";
-color: var(--color-primary-green);
-font-size: 1.1rem;
-margin-right: 8px;
-line-height: 1;
-}
+
 nav ul li a:hover{
 color: var(--color-hover-text);
 border-color: rgba(169, 197, 160, 0.7);
@@ -1029,9 +1023,7 @@ letter-spacing: 0.08em;
 nav ul li a::before {
 font-size: 0.9rem;
 }
-nav ul li a:not(.icon-button)::before{
-content: "🌿";
-}
+
 }
 @media(min-width:881px){
 #menu-toggle-btn{
@@ -1064,7 +1056,7 @@ flex-direction: row;
 position: static;
 width: auto;
 }
-nav ul li a:not(.icon-button)::before{
+/*nav ul li a:not(.icon-button)::before{
 content: "🌿";
-}
+}*/
 }
