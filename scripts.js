@@ -258,16 +258,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }));
     }
 
-    // ─── opinie – infinite loop, 2 lub 3 obok siebie ─────────────────────────
+    // ─── opinie – infinite loop, 1 / 2 / 3 kafelki obok siebie ───────────────
     const track  = document.querySelector('.opinions-track');
     const prevOp = document.getElementById('prev-opinion');
     const nextOp = document.getElementById('next-opinion');
+    const slider = document.querySelector('.opinions-slider');
 
     if (track) {
         const GAP = 16;
 
         function visibleCount() {
-            return window.innerWidth >= 900 ? 3 : 2;
+            if (window.innerWidth >= 900) return 3;
+            if (window.innerWidth >= 671) return 2;
+            return 1;
         }
 
         const origSlides = Array.from(track.children);
@@ -341,9 +344,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         let opTimer = setInterval(() => go(1), 6000);
-        const slider = document.querySelector('.opinions-slider');
         slider?.addEventListener('mouseenter', () => clearInterval(opTimer));
         slider?.addEventListener('mouseleave', () => { opTimer = setInterval(() => go(1), 6000); });
+
+        // ─── swipe na dotyk (mobile) ───────────────────────────────────────
+        let touchStartX = 0;
+        let touchEndX   = 0;
+
+        track.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        track.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            const THRESHOLD = 40; // min. px, żeby uznać to za swipe
+
+            if (Math.abs(diff) > THRESHOLD) {
+                clearInterval(opTimer);
+                go(diff > 0 ? 1 : -1); // przesunięcie w lewo = następny, w prawo = poprzedni
+                opTimer = setInterval(() => go(1), 6000);
+            }
+        }, { passive: true });
 
         window.addEventListener('resize', () => { applyWidths(); setPos(false); });
     }
