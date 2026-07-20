@@ -209,7 +209,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ─── dźwięk ────────────────────────────────────────────────────────────────
-
+    // Uwaga: przeglądarki blokują autoplay dźwięku dopóki użytkownik nie wykona
+    // gestu (klik/dotknięcie/klawisz). Scroll NIE jest traktowany jako taki gest,
+    // dlatego pokazujemy dyskretny "toast" zachęcający do kliknięcia, który
+    // pojawia się przy pierwszym przewinięciu strony.
     if (toggleLink && audio) {
         const icon = toggleLink.querySelector('i');
 
@@ -230,35 +233,85 @@ document.addEventListener('DOMContentLoaded', () => {
         audio.pause();
         toggleLink.setAttribute('aria-pressed', 'false');
 
-        // start po pierwszym kliknięciu gdziekolwiek na stronie
-        document.addEventListener('click', () => {
-            if (audio.paused) {
-                audio.play().then(() => updateIcon(true)).catch(() => console.warn("Autoplay zablokowany."));
-            }
-        }, { once: true });
-        // Funkcja, która uruchamia dźwięk
         const startAudio = () => {
             if (audio.paused) {
                 audio.play().then(() => updateIcon(true)).catch(() => console.warn("Autoplay zablokowany."));
             }
         };
 
-        // Podpinamy to samo pod dwa różne zdarzenia
-        document.addEventListener('click', startAudio, { once: true });
-        window.addEventListener('scroll', startAudio, { once: true });
+        // ── toast z podpowiedzią, pojawia się przy pierwszym scrollu ──
+        let toastShown  = false;
+        let toastEl     = null;
 
-                // ręczny toggle z przycisku głośności (działa też jako mute/unmute)
-                toggleLink.addEventListener('click', e => {
-                    e.preventDefault();
-                    if (audio.paused) {
-                        audio.play().catch(() => console.warn("Autoplay zablokowany."));
-                        updateIcon(true);
-                    } else {
-                        audio.pause();
-                        updateIcon(false);
-                    }
-                });
-            }   
+        function buildToast() {
+            const el = document.createElement('div');
+            el.id = 'sound-toast';
+            el.innerHTML = `🌿 <span>Kliknij, aby włączyć muzykę lasu</span>`;
+            Object.assign(el.style, {
+                position: 'fixed',
+                bottom: '20px',
+                left: '50%',
+                transform: 'translateX(-50%) translateY(20px)',
+                background: 'rgba(42,54,43,.92)',
+                color: '#E6E6E6',
+                border: '1px solid rgba(169,197,160,.5)',
+                borderRadius: '30px',
+                padding: '10px 20px',
+                fontFamily: "'Lora', serif",
+                fontSize: '.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(0,0,0,.3)',
+                zIndex: 9998,
+                opacity: '0',
+                transition: 'opacity .4s ease, transform .4s ease'
+            });
+            document.body.appendChild(el);
+            requestAnimationFrame(() => {
+                el.style.opacity   = '1';
+                el.style.transform = 'translateX(-50%) translateY(0)';
+            });
+            el.addEventListener('click', () => {
+                startAudio();
+                hideToast();
+            });
+            return el;
+        }
+
+        function hideToast() {
+            if (!toastEl) return;
+            toastEl.style.opacity   = '0';
+            toastEl.style.transform = 'translateX(-50%) translateY(20px)';
+            setTimeout(() => toastEl?.remove(), 400);
+            toastEl = null;
+        }
+
+        window.addEventListener('scroll', () => {
+            if (toastShown || !audio.paused) return;
+            toastShown = true;
+            toastEl = buildToast();
+            // toast sam zniknie po 6s, jeśli nikt nie kliknie
+            setTimeout(hideToast, 6000);
+        }, { once: true, passive: true });
+
+        // dowolne kliknięcie na stronie też odblokowuje muzykę (poza samym toastem, obsłużonym wyżej)
+        document.addEventListener('click', startAudio, { once: true });
+
+        // ręczny toggle z przycisku głośności (działa też jako mute/unmute)
+        toggleLink.addEventListener('click', e => {
+            e.preventDefault();
+            if (audio.paused) {
+                audio.play().catch(() => console.warn("Autoplay zablokowany."));
+                updateIcon(true);
+            } else {
+                audio.pause();
+                updateIcon(false);
+            }
+            hideToast();
+        });
+    }
 
     // ─── modal źródła ─────────────────────────────────────────────────────────
     const modal   = document.getElementById('modal-zrodla');
@@ -447,17 +500,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const galleryItems = Array.from(document.querySelectorAll('.gallery-item'));
     let lbIndex        = 0;
 
+    // Wymuszamy, by lightbox był bezpośrednim dzieckiem <body>. Jeśli w DOM jest
+    // zagnieżdżony gdzieś głębiej (np. wewnątrz kontenera z overflow/transform),
+    // "position: fixed" przestaje działać względem viewportu i modal wyświetla
+    // się w miejscu rodzica zamiast na całym ekranie.
+    if (lightbox && lightbox.parentElement !== document.body) {
+        document.body.appendChild(lightbox);
+    }
+
     function openLightbox(i) {
         lbIndex    = i;
         const item = galleryItems[i];
         lbImg.src  = item.dataset.full || item.querySelector('img')?.src || '';
         lbCaption.textContent = item.dataset.caption || '';
         lightbox.classList.add('is-active');
-        document.body.style.overflow = 'hidden';
+
+        // kompensacja szerokości paska przewijania, żeby strona nie "skakała" w bok
+        const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+        document.body.style.overflow     = 'hidden';
+        document.body.style.paddingRight = scrollBarWidth + 'px';
     }
     function closeLightbox() {
         lightbox.classList.remove('is-active');
-        document.body.style.overflow = '';
+        document.body.style.overflow     = '';
+        document.body.style.paddingRight = '';
     }
 
     galleryItems.forEach((item, i) => item.addEventListener('click', () => openLightbox(i)));
