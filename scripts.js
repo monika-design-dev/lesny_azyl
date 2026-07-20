@@ -209,28 +209,56 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ─── dźwięk ────────────────────────────────────────────────────────────────
+
     if (toggleLink && audio) {
         const icon = toggleLink.querySelector('i');
-        audio.pause();
-        toggleLink.setAttribute('aria-pressed', 'false');
 
-        toggleLink.addEventListener('click', e => {
-            e.preventDefault();
-            if (audio.paused) {
-                audio.play().catch(() => console.warn("Autoplay zablokowany."));
+        const updateIcon = (playing) => {
+            if (playing) {
                 icon.classList.replace('fa-volume-mute', 'fa-volume-up');
                 toggleLink.classList.remove('muted');
                 toggleLink.setAttribute('aria-label', 'Wyłącz muzykę');
                 toggleLink.setAttribute('aria-pressed', 'true');
             } else {
-                audio.pause();
                 icon.classList.replace('fa-volume-up', 'fa-volume-mute');
                 toggleLink.classList.add('muted');
                 toggleLink.setAttribute('aria-label', 'Włącz muzykę');
                 toggleLink.setAttribute('aria-pressed', 'false');
             }
-        });
-    }
+        };
+
+        audio.pause();
+        toggleLink.setAttribute('aria-pressed', 'false');
+
+        // start po pierwszym kliknięciu gdziekolwiek na stronie
+        document.addEventListener('click', () => {
+            if (audio.paused) {
+                audio.play().then(() => updateIcon(true)).catch(() => console.warn("Autoplay zablokowany."));
+            }
+        }, { once: true });
+        // Funkcja, która uruchamia dźwięk
+        const startAudio = () => {
+            if (audio.paused) {
+                audio.play().then(() => updateIcon(true)).catch(() => console.warn("Autoplay zablokowany."));
+            }
+        };
+
+        // Podpinamy to samo pod dwa różne zdarzenia
+        document.addEventListener('click', startAudio, { once: true });
+        window.addEventListener('scroll', startAudio, { once: true });
+
+                // ręczny toggle z przycisku głośności (działa też jako mute/unmute)
+                toggleLink.addEventListener('click', e => {
+                    e.preventDefault();
+                    if (audio.paused) {
+                        audio.play().catch(() => console.warn("Autoplay zablokowany."));
+                        updateIcon(true);
+                    } else {
+                        audio.pause();
+                        updateIcon(false);
+                    }
+                });
+            }   
 
     // ─── modal źródła ─────────────────────────────────────────────────────────
     const modal   = document.getElementById('modal-zrodla');
